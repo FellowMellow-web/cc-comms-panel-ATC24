@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC PANEL // CC COMMS PANEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bezel:#202225; --bezel-hi:#3a3d41; --face:#26292c; --face-lo:#1b1d1f;
+    --rivet:#0c0d0e; --amber:#ffb000; --amber-dim:#7a5500;
+    --green:#39ff6a; --green-dim:#1c5c2c; --red:#ff3b30; --red-dim:#5c1712;
+    --ink:#c9cdd1; --ink-dim:#7d8288;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    background:radial-gradient(ellipse at 50% 0%, #2c2f33, #131416 70%);
+    font-family:'Inter',system-ui,sans-serif; color:var(--ink);
+    padding:24px 12px 60px; display:flex; flex-direction:column; align-items:center;
+  }
+  .rack{width:100%; max-width:880px; display:flex; flex-direction:column; gap:14px;}
+  .titlebar{display:flex; justify-content:space-between; align-items:center; padding:0 6px 4px;}
+  .titlebar h1{font-size:13px; letter-spacing:.18em; font-weight:800; color:var(--ink-dim); margin:0; text-transform:uppercase;}
+  .titlebar h1 span{color:var(--red);}
+  .badge{font-size:10px; font-weight:700; letter-spacing:.1em; color:var(--red); border:1px solid var(--red-dim); padding:4px 8px; border-radius:4px;}
+
+  .panel{
+    background:linear-gradient(180deg,var(--bezel),#17181a); border-radius:10px; padding:16px;
+    position:relative; box-shadow:0 8px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); border:1px solid #000;
+  }
+  .rivet{position:absolute; width:6px; height:6px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #5a5d61, var(--rivet));}
+  .rivet.tl{top:8px;left:8px;} .rivet.tr{top:8px;right:8px;} .rivet.bl{bottom:8px;left:8px;} .rivet.br{bottom:8px;right:8px;}
+  .panel-label{font-size:10px; letter-spacing:.16em; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin:0 0 10px 2px;}
+
+  .com-row{display:flex; gap:10px; align-items:stretch; flex-wrap:wrap;}
+  .freq-slot{flex:1; min-width:150px; background:var(--face-lo); border-radius:6px; padding:8px 12px; border:1px solid #000; box-shadow:inset 0 2px 6px rgba(0,0,0,.6);}
+  .freq-slot .tag{font-size:9px; letter-spacing:.14em; font-weight:700; text-transform:uppercase;}
+  .freq-slot.active .tag{color:var(--green);} .freq-slot.standby .tag{color:var(--ink-dim);}
+  .freq-display{font-family:'Share Tech Mono',monospace; font-size:30px; letter-spacing:.03em; margin-top:2px;}
+  .freq-slot.active .freq-display{color:var(--green); text-shadow:0 0 10px rgba(57,255,106,.5);}
+  .freq-slot.standby .freq-display{color:var(--amber-dim);}
+  .freq-label-input{display:none;}
+  .swap-btn{width:56px; border-radius:50%; border:2px solid var(--bezel-hi); background:radial-gradient(circle at 35% 30%, #4a4d51, #1e2022 70%); color:var(--ink); font-size:18px; cursor:pointer; align-self:center; box-shadow:0 3px 6px rgba(0,0,0,.5);}
+  .swap-btn:active{transform:translateY(1px);}
+  .knob-set{display:flex; gap:28px; justify-content:center; margin-top:10px;}
+  .knob-unit{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .knob{width:60px; height:60px; border-radius:50%; position:relative; cursor:pointer; user-select:none;
+    background:radial-gradient(circle at 35% 30%, #4a4d51, #1e2022 70%);
+    border:3px solid var(--bezel-hi);
+    box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.15);}
+  .knob:active{filter:brightness(1.2);}
+  .knob-notch{position:absolute; top:5px; left:50%; width:4px; height:16px; background:var(--amber); border-radius:2px; transform:translateX(-50%) rotate(0deg); transform-origin:50% 25px;}
+  .knob-label{font-size:9px; letter-spacing:.12em; color:var(--ink-dim); font-weight:700;}
+  .knob-hint{text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.06em; margin-top:6px;}
+  .presets{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;}
+  .preset-btn{flex:1; min-width:70px; background:var(--face-lo); border:1px solid #000; border-radius:5px; padding:6px 4px; cursor:pointer; text-align:center;}
+  .preset-btn .pname{font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--ink-dim);}
+  .preset-btn .pfreq{font-family:'Share Tech Mono'; font-size:13px; color:var(--ink);}
+  .preset-btn.live{border-color:var(--green-dim);} .preset-btn.live .pname{color:var(--green);}
+  .roster-line{font-size:11px; color:var(--ink-dim); margin-top:4px;}
+  .roster-line .who{color:var(--green);}
+
+  .pdc-feed{background:var(--face-lo); border:1px solid #000; border-radius:6px; height:160px; overflow-y:auto; padding:10px; font-family:'Share Tech Mono'; font-size:12.5px; box-shadow:inset 0 2px 6px rgba(0,0,0,.6); margin-bottom:10px;}
+  .pdc-msg{margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed #333;}
+  .pdc-msg:last-child{border-bottom:none;}
+  .pdc-msg .meta{color:var(--ink-dim); font-size:10px;}
+  .pdc-msg .body{color:var(--amber); white-space:pre-wrap;}
+  .pdc-msg.reply .body{color:var(--green);}
+  .pdc-empty{color:var(--ink-dim); font-style:italic;}
+  .pdc-input-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .pdc-input-row input, .pdc-input-row textarea{background:var(--face-lo); border:1px solid #000; color:var(--ink); border-radius:5px; padding:8px 10px; font-family:'Inter'; font-size:13px; outline:none;}
+  .pdc-input-row input#callsign{width:110px;}
+  .pdc-input-row textarea{flex:1; min-width:200px; resize:vertical; min-height:38px; font-family:'Share Tech Mono';}
+  .send-btn{background:linear-gradient(180deg,#2a4d33,#173420); border:1px solid #000; color:var(--green); font-weight:700; letter-spacing:.06em; padding:8px 16px; border-radius:5px; cursor:pointer;}
+
+  .atis-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-bottom:12px;}
+  .atis-field{display:flex; flex-direction:column; gap:3px;}
+  .atis-field label{font-size:9px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; font-weight:700;}
+  .atis-field input, .atis-field select{background:var(--face-lo); border:1px solid #000; color:var(--ink); border-radius:5px; padding:7px 8px; font-family:'Share Tech Mono'; font-size:13px; outline:none;}
+  .atis-script{width:100%; min-height:100px; background:var(--face-lo); border:1px solid #000; color:var(--amber); border-radius:6px; padding:10px; font-family:'Share Tech Mono'; font-size:12.5px; outline:none; margin-bottom:10px; resize:vertical;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .gen-btn{background:linear-gradient(180deg,#3a3d41,#222426); border:1px solid #000; color:var(--ink); font-weight:700; letter-spacing:.06em; padding:8px 14px; border-radius:5px; cursor:pointer; font-size:11px;}
+  .voice-toggle{display:flex; background:var(--face-lo); border-radius:6px; padding:3px; gap:2px; border:1px solid #000;}
+  .voice-toggle button{border:none; background:transparent; color:var(--ink-dim); font-weight:700; font-size:11px; padding:7px 12px; border-radius:4px; cursor:pointer;}
+  .voice-toggle button.active{background:var(--amber); color:#1a1200;}
+  .rec-btn{background:linear-gradient(180deg,#5c1712,#2a0a08); border:1px solid #000; color:var(--red); font-weight:800; letter-spacing:.06em; padding:8px 16px; border-radius:5px; cursor:pointer;}
+  .rec-btn.recording{animation:recpulse 1s infinite;}
+  @keyframes recpulse{0%,100%{box-shadow:0 0 0 rgba(255,59,48,.6);} 50%{box-shadow:0 0 14px rgba(255,59,48,.8);}}
+  .broadcast-btn{background:linear-gradient(180deg,#2a4d33,#173420); border:1px solid #000; color:var(--green); font-weight:800; letter-spacing:.06em; padding:8px 16px; border-radius:5px; cursor:pointer;}
+  .atis-status{font-size:11px; color:var(--ink-dim); margin-top:8px;}
+  .atis-status .live{color:var(--green); font-weight:700;}
+  .note{font-size:10px; color:var(--ink-dim); margin-top:8px; line-height:1.5;}
+  audio{width:100%; margin-top:8px; height:32px;}
+
+  .status-strip{display:flex; justify-content:space-between; font-size:10px; color:var(--ink-dim); padding:0 6px; letter-spacing:.05em;}
+  .status-strip .dot{color:var(--red);}
+
+  .queue-list{max-height:360px; overflow-y:auto;}
+  .radar-item{background:var(--face-lo); border:1px solid #000; border-radius:6px; padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .radar-item .rmeta{font-size:11px; color:var(--ink-dim);}
+  .radar-item .rcallsign{font-weight:800; color:var(--ink); letter-spacing:.04em;}
+  .radar-squawk{font-family:'Share Tech Mono'; font-size:22px; color:var(--amber); letter-spacing:.1em;}
+  .radar-squawk.emergency{color:var(--red); text-shadow:0 0 10px rgba(255,59,48,.6);}
+  .radar-mode{font-size:9px; font-weight:700; letter-spacing:.08em; padding:3px 7px; border-radius:4px; background:#222426; color:var(--ink-dim);}
+  .radar-mode.ON, .radar-mode.ALT{color:var(--green); border:1px solid var(--green-dim);}
+  .ident-flag{font-size:10px; font-weight:800; letter-spacing:.08em; color:#1a1200; background:var(--amber); padding:3px 8px; border-radius:4px; animation:identblink 0.6s infinite;}
+  @keyframes identblink{0%,100%{opacity:1;} 50%{opacity:.3;}}
+  ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#3a3d41; border-radius:4px;}
+  .ptt-row{display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;}
+  .ptt-btn{flex:1; min-width:140px; padding:14px; border-radius:8px; border:2px solid var(--bezel-hi); background:linear-gradient(180deg,#3a3d41,#1e2022); color:var(--ink); font-weight:800; letter-spacing:.12em; font-size:14px; cursor:pointer; user-select:none; transition:all .1s ease;}
+  .ptt-btn.active{background:linear-gradient(180deg,#ff3b30,#5c1712); color:#fff; box-shadow:0 0 20px rgba(255,59,48,.6); border-color:var(--red);}
+  .ptt-keybind{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ink-dim);}
+  .ptt-keybind b{color:var(--amber); font-family:'Share Tech Mono'; border:1px solid #000; background:var(--face-lo); padding:3px 8px; border-radius:4px;}
+  .bind-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink-dim); font-weight:700; font-size:10px; letter-spacing:.06em; padding:7px 10px; border-radius:5px; cursor:pointer;}
+  .bind-btn.listening{color:var(--amber); border-color:var(--amber-dim);}
+  .onair-line{font-size:11px; color:var(--ink-dim); margin-top:8px;}
+  .onair-line.live{color:var(--red); font-weight:700;}
+  .voice-row{display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .voice-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink); font-weight:700; letter-spacing:.06em; padding:9px 16px; border-radius:6px; cursor:pointer; font-size:11px;}
+  .voice-btn.joined{color:var(--green); border-color:var(--green-dim);}
+  .voice-status{font-size:10px; color:var(--ink-dim); letter-spacing:.04em;}
+  .mic-select{background:var(--face-lo); border:1px solid #000; color:var(--ink); font-weight:600; letter-spacing:.02em; padding:9px 10px; border-radius:6px; font-size:11px; max-width:220px;}
+  .enable-audio-btn{display:none; background:linear-gradient(180deg,#5c1712,#2a0a08); border:1px solid #000; color:var(--red); font-weight:800; letter-spacing:.06em; padding:9px 16px; border-radius:6px; cursor:pointer; font-size:11px; animation:recpulse 1s infinite;}
+  .bridge-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;}
+  .bridge-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink-dim); font-weight:700; font-size:10px; letter-spacing:.06em; padding:7px 12px; border-radius:5px; cursor:pointer;}
+  .bridge-btn.on{color:var(--green); border-color:var(--green-dim);}
+  .bridge-status{font-size:10px; color:var(--ink-dim); letter-spacing:.04em;}
+</style>
+</head>
+<body>
+<div class="rack">
+  <div class="titlebar">
+    <h1>CC COMMS PANEL <span>&nbsp;CONTROLLER</span></h1>
+    <div class="badge">ATC POSITION</div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">Airport</div>
+    <div class="btn-row" style="margin-bottom:12px;">
+      <select id="airportSelect" style="background:var(--face-lo);color:var(--ink);border:1px solid #000;border-radius:5px;padding:8px 10px;font-family:'Inter';font-size:12px;flex:1;min-width:180px;"></select>
+      <input id="airportCustom" placeholder="Custom airport name" style="display:none;background:var(--face-lo);color:var(--ink);border:1px solid #000;border-radius:5px;padding:8px 10px;font-family:'Inter';font-size:12px;flex:1;min-width:160px;">
+    </div>
+    <div class="panel-label">COM Radio</div>
+    <div class="com-row">
+      <div class="freq-slot active" id="activeSlot">
+        <div class="tag">Active</div>
+        <div class="freq-display" id="activeFreqDisp">121.900</div>
+        <input class="freq-label-input" id="activeLabelInput" value="GROUND" maxlength="10">
+      </div>
+      <button class="swap-btn" id="swapBtn" title="Swap active/standby">&#8646;</button>
+      <div class="freq-slot standby" id="standbySlot">
+        <div class="tag">Standby</div>
+        <div class="freq-display" id="standbyFreqDisp">118.500</div>
+        <input class="freq-label-input" id="standbyLabelInput" value="TOWER" maxlength="10">
+      </div>
+    </div>
+    <div class="knob-set">
+      <div class="knob-unit">
+        <div class="knob" id="mhzKnob"><div class="knob-notch"></div></div>
+        <div class="knob-label">MHZ</div>
+      </div>
+      <div class="knob-unit">
+        <div class="knob" id="khzKnob"><div class="knob-notch"></div></div>
+        <div class="knob-label">KHZ</div>
+      </div>
+    </div>
+    <div class="knob-hint">Click left/right of a knob, or scroll on it, to tune Standby</div>
+    <div class="panel-label" style="margin-top:14px;">Presets</div>
+    <div class="presets" id="presetRow"></div>
+    <div class="roster-line" id="rosterLine">Signed on as controller on this frequency.</div>
+    <div class="voice-row">
+      <button class="voice-btn" id="voiceJoinBtn">JOIN VOICE CHAT</button>
+      <select class="mic-select" id="micSelect"><option value="">Default microphone</option></select>
+      <select class="mic-select" id="speakerSelect"><option value="">Default speaker</option></select>
+      <span class="voice-status" id="voiceStatus">Not connected.</span>
+      <button class="enable-audio-btn" id="enableAudioBtn">⚠ CLICK TO ENABLE AUDIO</button>
+    </div>
+    <div class="ptt-row">
+      <button class="ptt-btn" id="pttBtn">HOLD TO TALK</button>
+      <div class="ptt-keybind">
+        Key: <b id="pttKeyDisplay">Space</b>
+        <button class="bind-btn" id="pttBindBtn">BIND KEY</button>
+      </div>
+    </div>
+    <div class="bridge-row">
+      <button class="bridge-btn" id="bridgeToggleBtn">ENABLE GLOBAL PTT</button>
+      <span class="bridge-status" id="bridgeStatus">Global PTT: off (works only while this tab is focused)</span>
+    </div>
+    <div class="onair-line" id="onAirLine">Frequency clear.</div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">Radar / Squawks</div>
+    <div class="queue-list" id="radarList"><div class="pdc-empty">No transponders reporting yet.</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">PDC / Clearance — <span id="pdcFreqLabel"></span></div>
+    <div class="pdc-feed" id="pdcFeed"><div class="pdc-empty">No messages on this frequency yet.</div></div>
+    <div class="pdc-input-row">
+      <input id="callsign" placeholder="Your ATC callsign" maxlength="14">
+      <textarea id="pdcText" placeholder="Reply / clearance text..."></textarea>
+      <button class="send-btn" id="pdcSend">SEND</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">ACARS Datalink</div>
+    <div class="pdc-feed" id="acarsFeed"><div class="pdc-empty">No ACARS messages yet.</div></div>
+    <div class="pdc-input-row">
+      <input id="acarsCallsign" placeholder="ATC/dispatch callsign" maxlength="14">
+      <textarea id="acarsText" placeholder="Reply / uplink message..."></textarea>
+      <button class="send-btn" id="acarsSend">SEND</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">File Flight Plan (on behalf of a pilot)</div>
+    <div class="atis-grid">
+      <div class="atis-field"><label>Callsign</label><input id="fp_callsign" placeholder="N123AB"></div>
+      <div class="atis-field"><label>Aircraft</label><input id="fp_aircraft" placeholder="A320"></div>
+      <div class="atis-field"><label>Rule</label>
+        <select id="fp_rule">
+          <option value="IFR">IFR</option>
+          <option value="VFR">VFR</option>
+        </select>
+      </div>
+      <div class="atis-field"><label>Departing</label><input id="fp_from" placeholder="IRFD"></div>
+      <div class="atis-field"><label>Arriving</label><input id="fp_to" placeholder="IPPH"></div>
+      <div class="atis-field"><label>Cruise Alt/FL</label><input id="fp_alt" placeholder="FL350"></div>
+    </div>
+    <div class="atis-field" style="margin-bottom:10px;">
+      <label>Route (optional)</label>
+      <input id="fp_route" placeholder="GPS DIRECT">
+    </div>
+    <div class="atis-field" style="margin-bottom:10px;">
+      <label>Remarks (optional)</label>
+      <input id="fp_remarks" placeholder="e.g. request higher, heavy, student pilot">
+    </div>
+    <div class="btn-row">
+      <button class="broadcast-btn" id="fpSubmitBtn">FILE FLIGHT PLAN</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">Flight Plans</div>
+    <div class="pdc-feed" id="flightPlansFeed"><div class="pdc-empty">No flight plans filed yet.</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">PDC Clearance Builder</div>
+    <div class="atis-grid">
+      <div class="atis-field"><label>Callsign</label><input id="pdc_callsign" placeholder="N123AB"></div>
+      <div class="atis-field"><label>Cleared To</label><input id="pdc_dest" placeholder="IPPH"></div>
+      <div class="atis-field"><label>Route / SID</label><input id="pdc_route" value="AS FILED"></div>
+      <div class="atis-field"><label>Initial Climb</label><input id="pdc_climb" value="Climb via SID except maintain 5,000"></div>
+      <div class="atis-field"><label>Expect Altitude</label><input id="pdc_expect" value="Expect FL350 10 minutes after departure"></div>
+      <div class="atis-field"><label>Departure Freq</label><input id="pdc_depfreq" value="124.700"></div>
+    </div>
+    <div class="atis-field" style="margin-bottom:10px;">
+      <label>Remarks (optional)</label>
+      <input id="pdc_remarks" placeholder="e.g. hold for wake turbulence, void time 1830Z">
+    </div>
+    <div class="btn-row" style="margin-bottom:10px;">
+      <span class="atis-field" style="flex-direction:row; align-items:center; gap:6px;">
+        <label style="margin:0;">Squawk</label>
+        <input id="pdc_squawk" value="0000" style="width:70px; font-family:'Share Tech Mono';">
+      </span>
+      <button class="gen-btn" id="pdcRandomSquawkBtn">RANDOM SQUAWK</button>
+    </div>
+    <textarea class="atis-script" id="pdcScript" placeholder="Generated clearance will appear here..."></textarea>
+    <div class="btn-row">
+      <button class="gen-btn" id="pdcGenBtn">GENERATE CLEARANCE</button>
+      <button class="broadcast-btn" id="pdcSendBtn">SEND TO PILOT</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">ATIS Builder</div>
+    <div class="atis-field" style="margin-bottom:8px;">
+      <label>Airport Name</label>
+      <input id="f_airport" value="Greater Rockford International">
+    </div>
+    <div class="atis-grid">
+      <div class="atis-field"><label>Wind Dir</label><input id="f_winddir" value="270"></div>
+      <div class="atis-field"><label>Wind Spd (kt)</label><input id="f_windspd" value="8"></div>
+      <div class="atis-field"><label>Visibility (mi)</label><input id="f_visibility" value="10"></div>
+      <div class="atis-field"><label>Weather (optional)</label><input id="f_weather" value=""></div>
+      <div class="atis-field"><label>Sky Condition</label><input id="f_sky" value="Sky clear"></div>
+      <div class="atis-field"><label>Temp (C)</label><input id="f_temp" value="18"></div>
+      <div class="atis-field"><label>Dewpoint (C)</label><input id="f_dewpoint" value="12"></div>
+      <div class="atis-field"><label>Altimeter</label><input id="f_altimeter" value="29.92"></div>
+      <div class="atis-field"><label>Approach in Use</label><input id="f_approach" value="ILS Runway 27L"></div>
+      <div class="atis-field"><label>Runway</label><input id="f_runway" value="27L"></div>
+      <div class="atis-field"><label>ATIS Freq</label><input id="f_atisfreq" value="128.350"></div>
+    </div>
+    <div class="atis-field" style="margin-bottom:8px;">
+      <label>NOTAMs / Remarks</label>
+      <input id="f_remarks" value="Birds in vicinity of airport.">
+    </div>
+    <div class="btn-row" style="margin-bottom:10px;">
+      <button class="gen-btn" id="genBtn">GENERATE SCRIPT</button>
+      <span style="font-size:10px;color:var(--ink-dim);">Info letter:
+        <select id="atisLetterSelect" style="background:var(--face-lo);color:var(--amber);border:1px solid #000;border-radius:4px;font-family:'Share Tech Mono';font-size:13px;padding:2px 6px;"></select>
+      </span>
+    </div>
+    <textarea class="atis-script" id="atisScript"></textarea>
+
+    <div class="panel-label" style="margin-top:4px;">Voice</div>
+    <div class="btn-row">
+      <div class="voice-toggle">
+        <button id="voiceSynthBtn" class="active">Synthetic</button>
+        <button id="voiceRecBtn">Record My Voice</button>
+      </div>
+    </div>
+
+    <div id="synthControls" class="btn-row" style="margin-top:10px;">
+      <button class="gen-btn" id="previewBtn">PREVIEW VOICE</button>
+      <button class="broadcast-btn" id="broadcastSynthBtn">BROADCAST</button>
+    </div>
+
+    <div id="recControls" class="btn-row" style="margin-top:10px; display:none;">
+      <button class="rec-btn" id="recBtn">&#9679; RECORD</button>
+      <button class="broadcast-btn" id="broadcastRecBtn" disabled>BROADCAST RECORDING</button>
+    </div>
+    <audio id="recPreview" controls style="display:none;"></audio>
+
+    <div class="atis-status" id="atisStatus">No ATIS currently broadcasting.</div>
+    <div class="note">Recording uses your mic (MediaRecorder). If the browser blocks mic access inside this preview, download the file and open it directly in a normal browser tab — mic permission works there.</div>
+  </div>
+
+  <div class="status-strip">
+    <span><span class="dot">&#9679;</span> ATC POSITION — syncs every 4s</span>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<script src="/storage-shim.js"></script>
+<script src="/voice.js"></script>
+<script>
+const AIRPORT_DATA = {
+  IRFD: { name:'Greater Rockford International', region:'Rockford', ctr:'124.850', twr:'118.100', gnd:'120.400' },
+  IMLR: { name:'IMLR', region:'Rockford', ctr:'124.850', twr:'133.850' },
+  IGAR: { name:'IGAR', region:'Rockford', ctr:'124.850', twr:'125.600' },
+  IBLT: { name:'IBLT', region:'Rockford', ctr:'124.850', twr:'120.250' },
+  ITRC: { name:'ITRC', region:'Rockford', ctr:'124.850', twr:'119.150' },
+
+  ILAR: { name:'ILAR', region:'Cyprus', ctr:'126.300', twr:'121.200', gnd:'119.400' },
+  IPAP: { name:'IPAP', region:'Cyprus', ctr:'126.300', twr:'119.900' },
+  IIAB: { name:'IIAB', region:'Cyprus', ctr:'126.300', twr:'127.250' },
+  IHEN: { name:'IHEN', region:'Cyprus', ctr:'126.300', twr:'130.250' },
+  IBAR: { name:'IBAR', region:'Cyprus', ctr:'126.300', twr:'118.750' },
+
+  IZOL: { name:'Izolirani International', region:'Izolirani', ctr:'125.650', twr:'118.700', gnd:'121.900' },
+  IJAF: { name:'Al Najaf', region:'Izolirani', ctr:'125.650', twr:'119.100' },
+  ISCM: { name:'RAF Scampton', region:'Izolirani', ctr:'125.650', twr:'121.300' },
+
+  ITKO: { name:'Tokyo International', region:'Orenji', ctr:'132.300', twr:'118.800', gnd:'118.225' },
+  IDCS: { name:'Saba Airport', region:'Orenji', ctr:'132.300', twr:'118.250' },
+  IBRD: { name:'IBRD', region:'Orenji', ctr:'132.300', twr:'118.350' },
+
+  IPPH: { name:'Perth International', region:'Perth', ctr:'135.250', twr:'127.400', gnd:'121.700' },
+  ILKL: { name:'Lukla Airport', region:'Perth', ctr:'135.250', twr:'120.150' },
+
+  IBTH: { name:'IBTH', region:'Saint Barthelemy', ctr:'128.600', twr:'118.700' },
+  ISKP: { name:'ISKP', region:'Saint Barthelemy', ctr:'128.600', twr:'123.250' },
+
+  IKFL: { name:'Grindavik Airport', region:'Grindavik', ctr:'126.750', twr:'118.300', gnd:'121.750' },
+  ITEY: { name:'ITEY', region:'Grindavik', ctr:'126.750', twr:'119.425' },
+
+  ISAU: { name:'ISAU', region:'Sauthemptona', ctr:'127.825', twr:'118.200' },
+};
+
+function getPresetsForAirport(icao){
+  const a = AIRPORT_DATA[icao];
+  const atisFreqEl = document.getElementById('f_atisfreq');
+  const atisFreq = atisFreqEl ? atisFreqEl.value : '128.350';
+  if(!a) return [{name:'ATIS', freq: atisFreq}];
+  const list = [];
+  if(a.gnd) list.push({name:'GND', freq:a.gnd});
+  list.push({name:'TWR', freq:a.twr});
+  list.push({name:'CTR', freq:a.ctr});
+  list.push({name:'ATIS', freq: atisFreq});
+  return list;
+}
+
+let state = {
+  callsign: '',
+  pttKey: '`',
+  micDeviceId: '',
+  globalPttEnabled: false,
+  speakerDeviceId: '',
+  airportName: 'Greater Rockford International', airportIcao: 'IRFD',
+  activeFreq: '120.400', activeLabel: 'GROUND',
+  standbyFreq: '118.100', standbyLabel: 'TOWER',
+  atisLetter: 'A',
+  voiceMode: 'synth',
+};
+
+let mediaRecorder, recordedChunks = [], recordedBase64 = null;
+
+function freqKey(f){ return f.replace(/\./g,'_'); }
+function fmtFreq(n){ return (Math.round(n*1000)/1000).toFixed(3); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let editingPlanId = null;
+
+async function fetchRadarTargets(){
+  try{
+    const listResult = await window.storage.list('xpdr:', true);
+    if(!listResult || !listResult.keys || listResult.keys.length === 0) return [];
+    const targets = [];
+    for(const k of listResult.keys){
+      try{
+        const r = await window.storage.get(k, true);
+        if(r && r.value) targets.push(JSON.parse(r.value));
+      }catch(e){}
+    }
+    return targets;
+  }catch(e){ return []; }
+}
+async function refreshRadar(){
+  const wrap = document.getElementById('radarList');
+  const targets = await fetchRadarTargets();
+  if(!targets || targets.length === 0){ wrap.innerHTML = '<div class="pdc-empty">No transponders reporting yet.</div>'; return; }
+  const now = Date.now();
+  wrap.innerHTML = targets
+    .sort((a,b)=> (b.ts||0) - (a.ts||0))
+    .map(t=>{
+      const emergency = ['7500','7600','7700'].includes(t.squawk);
+      const identing = t.identTs && (now - t.identTs) < 6000;
+      return `
+      <div class="radar-item">
+        <div>
+          <div class="rcallsign">${escapeHtml(t.callsign || 'UNK')}</div>
+          <div class="rmeta">Last update ${new Date(t.ts).toLocaleTimeString()}</div>
+        </div>
+        <span class="radar-mode ${t.mode}">${t.mode}</span>
+        <span class="radar-squawk ${emergency ? 'emergency' : ''}">${t.squawk}</span>
+        ${identing ? '<span class="ident-flag">IDENT</span>' : ''}
+      </div>`;
+    }).join('');
+}
+
+async function fetchFlightPlans(){
+  try{ const r = await window.storage.get('flight-plans', true); return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function saveFlightPlans(plans){
+  try{ await window.storage.set('flight-plans', JSON.stringify(plans), true); }catch(e){}
+}
+async function pushFlightPlan(plan){
+  const existing = await fetchFlightPlans();
+  existing.push(plan);
+  const trimmed = existing.slice(-80);
+  await saveFlightPlans(trimmed);
+  return trimmed;
+}
+
+document.getElementById('fpSubmitBtn').onclick = async ()=>{
+  const callsign = document.getElementById('fp_callsign').value.trim().toUpperCase();
+  const aircraft = document.getElementById('fp_aircraft').value.trim() || 'UNK';
+  const rule = document.getElementById('fp_rule').value;
+  const from = document.getElementById('fp_from').value.trim().toUpperCase();
+  const to = document.getElementById('fp_to').value.trim().toUpperCase();
+  const alt = document.getElementById('fp_alt').value.trim() || 'N/A';
+  const route = document.getElementById('fp_route').value.trim();
+  const remarks = document.getElementById('fp_remarks').value.trim();
+  if(!callsign || !from || !to){ alert('Callsign, Departing, and Arriving are required.'); return; }
+  const plan = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), callsign, aircraft, rule, from, to, alt, route, remarks, squawk:'', status:'FILED', ts: Date.now() };
+  await pushFlightPlan(plan);
+  refreshFlightPlans();
+};
+
+function flightPlanEditRow(p){
+  return `
+    <div class="pdc-msg" data-editing="${p.id}">
+      <div class="atis-grid" style="margin-bottom:8px;">
+        <div class="atis-field"><label>Callsign</label><input class="fpe-callsign" value="${p.callsign}"></div>
+        <div class="atis-field"><label>Aircraft</label><input class="fpe-aircraft" value="${p.aircraft}"></div>
+        <div class="atis-field"><label>Rule</label>
+          <select class="fpe-rule">
+            <option value="IFR" ${p.rule==='IFR'?'selected':''}>IFR</option>
+            <option value="VFR" ${p.rule==='VFR'?'selected':''}>VFR</option>
+          </select>
+        </div>
+        <div class="atis-field"><label>Departing</label><input class="fpe-from" value="${p.from}"></div>
+        <div class="atis-field"><label>Arriving</label><input class="fpe-to" value="${p.to}"></div>
+        <div class="atis-field"><label>Alt/FL</label><input class="fpe-alt" value="${p.alt}"></div>
+        <div class="atis-field"><label>Route</label><input class="fpe-route" value="${p.route||''}"></div>
+        <div class="atis-field"><label>Squawk</label><input class="fpe-squawk" value="${p.squawk||''}"></div>
+        <div class="atis-field"><label>Status</label>
+          <select class="fpe-status">
+            <option value="FILED" ${p.status==='FILED'?'selected':''}>FILED</option>
+            <option value="CLEARED" ${p.status==='CLEARED'?'selected':''}>CLEARED</option>
+            <option value="CLOSED" ${p.status==='CLOSED'?'selected':''}>CLOSED</option>
+          </select>
+        </div>
+      </div>
+      <div class="atis-field" style="margin-bottom:8px;"><label>Remarks</label><input class="fpe-remarks" value="${p.remarks||''}"></div>
+      <div class="btn-row">
+        <button class="broadcast-btn fpe-save">SAVE</button>
+        <button class="gen-btn fpe-cancel">CANCEL</button>
+      </div>
+    </div>`;
+}
+
+async function refreshFlightPlans(){
+  const feed = document.getElementById('flightPlansFeed');
+  const plans = await fetchFlightPlans();
+  if(!plans || plans.length === 0){ feed.innerHTML = '<div class="pdc-empty">No flight plans filed yet.</div>'; return; }
+  feed.innerHTML = plans.slice().reverse().map(p=>{
+    if(p.id === editingPlanId) return flightPlanEditRow(p);
+    return `
+    <div class="pdc-msg ${p.status==='CLEARED' ? 'reply' : ''}">
+      <div class="meta">${p.callsign} — ${p.rule} — ${p.status} — ${new Date(p.ts).toLocaleTimeString()}</div>
+      <div class="body">${p.aircraft} | ${p.from} to ${p.to} | ${p.alt}${p.route ? ' | '+escapeHtml(p.route) : ''}${p.squawk ? ' | Squawk '+p.squawk : ''}${p.remarks ? '\nRemarks: '+escapeHtml(p.remarks) : ''}</div>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="gen-btn" data-load-plan="${p.id}">LOAD INTO PDC</button>
+        <button class="gen-btn" data-edit-plan="${p.id}">EDIT</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  feed.querySelectorAll('[data-load-plan]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const plan = plans.find(p=>p.id === btn.dataset.loadPlan);
+      if(!plan) return;
+      document.getElementById('pdc_callsign').value = plan.callsign;
+      document.getElementById('pdc_dest').value = plan.to;
+      document.getElementById('pdc_route').value = plan.route || 'AS FILED';
+    };
+  });
+  feed.querySelectorAll('[data-edit-plan]').forEach(btn=>{
+    btn.onclick = ()=>{ editingPlanId = btn.dataset.editPlan; refreshFlightPlans(); };
+  });
+  const editWrap = feed.querySelector('[data-editing]');
+  if(editWrap){
+    editWrap.querySelector('.fpe-cancel').onclick = ()=>{ editingPlanId = null; refreshFlightPlans(); };
+    editWrap.querySelector('.fpe-save').onclick = async ()=>{
+      const id = editWrap.dataset.editing;
+      const allPlans = await fetchFlightPlans();
+      const idx = allPlans.findIndex(p=>p.id === id);
+      if(idx === -1) return;
+      allPlans[idx] = {
+        ...allPlans[idx],
+        callsign: editWrap.querySelector('.fpe-callsign').value.trim().toUpperCase(),
+        aircraft: editWrap.querySelector('.fpe-aircraft').value.trim(),
+        rule: editWrap.querySelector('.fpe-rule').value,
+        from: editWrap.querySelector('.fpe-from').value.trim().toUpperCase(),
+        to: editWrap.querySelector('.fpe-to').value.trim().toUpperCase(),
+        alt: editWrap.querySelector('.fpe-alt').value.trim(),
+        route: editWrap.querySelector('.fpe-route').value.trim(),
+        squawk: editWrap.querySelector('.fpe-squawk').value.trim(),
+        status: editWrap.querySelector('.fpe-status').value,
+        remarks: editWrap.querySelector('.fpe-remarks').value.trim(),
+      };
+      await saveFlightPlans(allPlans);
+      editingPlanId = null;
+      refreshFlightPlans();
+    };
+  }
+}
+
+function randomSquawk(){
+  let code = '';
+  for(let i=0;i<4;i++) code += Math.floor(Math.random()*8); // 0-7 per PTFS convention
+  return code;
+}
+document.getElementById('pdcRandomSquawkBtn').onclick = ()=>{
+  document.getElementById('pdc_squawk').value = randomSquawk();
+};
+document.getElementById('pdcGenBtn').onclick = ()=>{
+  const callsign = document.getElementById('pdc_callsign').value.trim().toUpperCase() || 'UNKNOWN';
+  const dest = document.getElementById('pdc_dest').value.trim().toUpperCase() || 'DESTINATION';
+  const route = document.getElementById('pdc_route').value.trim() || 'AS FILED';
+  const climb = document.getElementById('pdc_climb').value.trim();
+  const expect = document.getElementById('pdc_expect').value.trim();
+  const depfreq = document.getElementById('pdc_depfreq').value.trim();
+  const remarks = document.getElementById('pdc_remarks').value.trim();
+  const squawk = document.getElementById('pdc_squawk').value.trim() || randomSquawk();
+  document.getElementById('pdc_squawk').value = squawk;
+  const lines = [
+    `${callsign}, cleared to ${dest} via ${route}.`,
+    `${climb}.`,
+    `${expect}.`,
+    `Departure frequency ${depfreq}.`,
+    `Squawk ${squawk}.`
+  ];
+  if(remarks) lines.push(remarks);
+  document.getElementById('pdcScript').value = lines.join('\n');
+};
+document.getElementById('pdcSendBtn').onclick = async ()=>{
+  const callsign = document.getElementById('pdc_callsign').value.trim().toUpperCase();
+  const text = document.getElementById('pdcScript').value.trim();
+  const squawk = document.getElementById('pdc_squawk').value.trim();
+  if(!callsign || !text){ alert('Generate a clearance first, and make sure Callsign is filled in.'); return; }
+  const msg = { callsign, text, ts: Date.now(), from: state.callsign || 'ATC', type: 'reply' };
+  const updated = await pushPdc(state.activeFreq, msg);
+  if(updated) refreshPdc();
+  // update matching flight plan status + assigned squawk, if one exists
+  const plans = await fetchFlightPlans();
+  const idx = plans.findIndex(p=>p.callsign.toUpperCase() === callsign && p.status !== 'CLEARED');
+  if(idx !== -1){
+    plans[idx].status = 'CLEARED';
+    plans[idx].squawk = squawk;
+    await saveFlightPlans(plans);
+    refreshFlightPlans();
+  }
+};
+
+function nextLetter(l){ const codes='ABCDEFGHIJKLMNOPQRSTUVWXYZ'; const i=codes.indexOf(l); return codes[(i+1)%codes.length]; }
+
+function populateAirportSelect(){
+  const sel = document.getElementById('airportSelect');
+  if(sel.options.length === 0){
+    const regions = {};
+    Object.entries(AIRPORT_DATA).forEach(([icao, a])=>{
+      (regions[a.region] = regions[a.region] || []).push({icao, ...a});
+    });
+    Object.keys(regions).forEach(region=>{
+      const grp = document.createElement('optgroup');
+      grp.label = region;
+      regions[region].forEach(a=>{
+        const opt = document.createElement('option');
+        opt.value = a.icao;
+        opt.textContent = `${a.name} (${a.icao})`;
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    });
+    const customOpt = document.createElement('option');
+    customOpt.value = 'CUSTOM';
+    customOpt.textContent = 'Custom / Other';
+    sel.appendChild(customOpt);
+
+    sel.onchange = ()=>{
+      const match = AIRPORT_DATA[sel.value];
+      const customInput = document.getElementById('airportCustom');
+      if(!match){
+        customInput.style.display = 'block';
+        customInput.focus();
+        state.airportIcao = '';
+      } else {
+        customInput.style.display = 'none';
+        state.airportName = match.name;
+        state.airportIcao = sel.value;
+        document.getElementById('f_airport').value = match.name;
+      }
+      saveLocalSafe();
+      broadcastAirport();
+      renderPresets();
+    };
+    document.getElementById('airportCustom').onchange = (e)=>{
+      state.airportName = e.target.value.trim() || 'Custom Airport';
+      state.airportIcao = '';
+      document.getElementById('f_airport').value = state.airportName;
+      saveLocalSafe();
+      broadcastAirport();
+      renderPresets();
+    };
+  }
+  const currentVal = state.airportIcao || 'CUSTOM';
+  sel.value = [...sel.options].some(o=>o.value===currentVal) ? currentVal : 'CUSTOM';
+  if(sel.value === 'CUSTOM' && state.airportIcao === ''){
+    document.getElementById('airportCustom').style.display = 'block';
+    document.getElementById('airportCustom').value = state.airportName;
+  }
+}
+async function broadcastAirport(){
+  try{
+    await window.storage.set('current-airport', JSON.stringify({ name: state.airportName, icao: state.airportIcao, ts: Date.now() }), true);
+  }catch(e){}
+}
+
+function populateLetterSelect(){
+  const sel = document.getElementById('atisLetterSelect');
+  if(sel.options.length === 0){
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l=>{
+      const opt = document.createElement('option');
+      opt.value = l; opt.textContent = l;
+      sel.appendChild(opt);
+    });
+    sel.onchange = ()=>{ state.atisLetter = sel.value; saveLocalSafe(); };
+  }
+  sel.value = state.atisLetter;
+}
+
+async function loadLocal(){
+  try{
+    const r = await window.storage.get('atc-settings', false);
+    if(r && r.value) Object.assign(state, JSON.parse(r.value));
+  }catch(e){}
+  render();
+}
+async function saveLocalSafe(){
+  try{ await window.storage.set('atc-settings', JSON.stringify(state), false); }catch(e){}
+}
+
+async function signOnFrequency(freq, label){
+  try{ await window.storage.set('roster:'+freqKey(freq), JSON.stringify({label: state.callsign || label || 'ATC', signedOn:true, ts:Date.now()}), true); }catch(e){}
+}
+async function signOffFrequency(freq){
+  try{ await window.storage.delete('roster:'+freqKey(freq), true); }catch(e){}
+}
+async function fetchPdc(freq){
+  try{ const r = await window.storage.get('pdc:'+freqKey(freq), true); return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function pushPdc(freq, msg){
+  try{
+    const existing = await fetchPdc(freq);
+    existing.push(msg);
+    const trimmed = existing.slice(-40);
+    await window.storage.set('pdc:'+freqKey(freq), JSON.stringify(trimmed), true);
+    return trimmed;
+  }catch(e){ return null; }
+}
+
+function render(){
+  document.getElementById('pttKeyDisplay').textContent = keyLabel(state.pttKey || ' ');
+  document.getElementById('activeFreqDisp').textContent = state.activeFreq;
+  document.getElementById('standbyFreqDisp').textContent = state.standbyFreq;
+  document.getElementById('activeLabelInput').value = state.activeLabel;
+  document.getElementById('standbyLabelInput').value = state.standbyLabel;
+  document.getElementById('pdcFreqLabel').textContent = state.activeLabel + ' ' + state.activeFreq;
+  populateAirportSelect();
+  populateLetterSelect();
+  renderPresets();
+  refreshPdc();
+  refreshAtisStatus();
+  refreshFlightPlans();
+  refreshRadar();
+}
+
+function renderPresets(){
+  const row = document.getElementById('presetRow');
+  row.innerHTML = '';
+  getPresetsForAirport(state.airportIcao).forEach(p=>{
+    const btn = document.createElement('div');
+    btn.className = 'preset-btn' + (p.freq === state.activeFreq ? ' live' : '');
+    btn.innerHTML = `<div class="pname">${p.name}</div><div class="pfreq">${p.freq}</div>`;
+    btn.onclick = ()=>{ state.standbyFreq = p.freq; state.standbyLabel = p.name; render(); saveLocalSafe(); };
+    row.appendChild(btn);
+  });
+}
+
+async function refreshPdc(){
+  const feed = document.getElementById('pdcFeed');
+  const msgs = await fetchPdc(state.activeFreq);
+  if(!msgs || msgs.length === 0){ feed.innerHTML = '<div class="pdc-empty">No messages on this frequency yet.</div>'; return; }
+  feed.innerHTML = msgs.map(m=>`
+    <div class="pdc-msg ${m.type==='reply'?'reply':''}">
+      <div class="meta">${m.callsign || 'UNK'} — ${m.from} — ${new Date(m.ts).toLocaleTimeString()}</div>
+      <div class="body">${escapeHtml(m.text)}</div>
+    </div>`).join('');
+  feed.scrollTop = feed.scrollHeight;
+}
+
+async function refreshAtisStatus(){
+  try{
+    const r = await window.storage.get('atis-data', true);
+    const el = document.getElementById('atisStatus');
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      el.innerHTML = `<span class="live">BROADCASTING</span> on ${d.freq || '128.350'} — Info ${d.letter} (${d.mode === 'recorded' ? 'recorded voice' : 'synthetic voice'}) — sent ${new Date(d.ts).toLocaleTimeString()}`;
+    } else {
+      el.innerHTML = 'No ATIS currently broadcasting.';
+    }
+  }catch(e){}
+}
+
+document.getElementById('swapBtn').onclick = async ()=>{
+  await signOffFrequency(state.activeFreq);
+  [state.activeFreq, state.standbyFreq] = [state.standbyFreq, state.activeFreq];
+  [state.activeLabel, state.standbyLabel] = [state.standbyLabel, state.activeLabel];
+  render(); saveLocalSafe();
+  await signOnFrequency(state.activeFreq, state.activeLabel);
+};
+function adjustStandby(delta){
+  let f = parseFloat(state.standbyFreq) + delta;
+  if(f < 118) f = 118; if(f > 136.975) f = 136.975;
+  state.standbyFreq = fmtFreq(f); render(); saveLocalSafe();
+}
+function attachKnob(knobId, step){
+  const knob = document.getElementById(knobId);
+  const notch = knob.querySelector('.knob-notch');
+  let rot = 0;
+  function turn(dir){
+    rot += dir*20;
+    notch.style.transform = `translateX(-50%) rotate(${rot}deg)`;
+    adjustStandby(dir*step);
+  }
+  knob.addEventListener('click', (e)=>{
+    const rect = knob.getBoundingClientRect();
+    const dir = (e.clientX - (rect.left+rect.width/2)) >= 0 ? 1 : -1;
+    turn(dir);
+  });
+  knob.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    turn(e.deltaY < 0 ? 1 : -1);
+  }, {passive:false});
+}
+attachKnob('mhzKnob', 1);
+attachKnob('khzKnob', 0.025);
+document.getElementById('activeLabelInput').onchange = (e)=>{ state.activeLabel = e.target.value.toUpperCase(); render(); saveLocalSafe(); signOnFrequency(state.activeFreq, state.activeLabel); };
+document.getElementById('standbyLabelInput').onchange = (e)=>{ state.standbyLabel = e.target.value.toUpperCase(); saveLocalSafe(); };
+
+document.getElementById('pdcSend').onclick = async ()=>{
+  const callsign = document.getElementById('callsign').value.trim() || 'ATC';
+  state.callsign = callsign; saveLocalSafe();
+  const text = document.getElementById('pdcText').value.trim();
+  if(!text) return;
+  const msg = { callsign, text, ts: Date.now(), from: callsign, type: 'reply' };
+  const updated = await pushPdc(state.activeFreq, msg);
+  document.getElementById('pdcText').value = '';
+  if(updated) refreshPdc();
+};
+
+const PHONETIC = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Golf','Hotel','India','Juliett','Kilo','Lima','Mike','November','Oscar','Papa','Quebec','Romeo','Sierra','Tango','Uniform','Victor','Whiskey','X-ray','Yankee','Zulu'];
+function letterToPhonetic(l){ const i = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.indexOf(l.toUpperCase()); return PHONETIC[i] || l; }
+function numToWords(v){
+  // FAA phraseology: numbers spoken digit-by-digit, "niner" for 9, "minus" for negative sign
+  const map = {'0':'zero','1':'one','2':'two','3':'three','4':'four','5':'five','6':'six','7':'seven','8':'eight','9':'niner','-':'minus'};
+  return String(v).replace('.','').split('').map(ch=> map[ch] !== undefined ? map[ch] : ch).join(' ');
+}
+function runwayWords(rw){
+  const m = String(rw).match(/(\d+)\s*([LRC]?)/i);
+  if(!m) return rw;
+  const suffixMap = {L:'Left', R:'Right', C:'Center'};
+  const suffix = suffixMap[m[2].toUpperCase()] || '';
+  return (numToWords(m[1]) + (suffix ? ' ' + suffix : '')).trim();
+}
+function expandRunwayMentions(text){
+  // Converts any inline "27L"-style runway token within free text (e.g. the
+  // Approach field) to spoken form, e.g. "ILS Runway 27L" -> "ILS Runway two seven Left"
+  const suffixMap = {L:'Left', R:'Right', C:'Center'};
+  return String(text).replace(/\b(\d{1,2})\s*([LRC])\b/gi, (full, digits, suffix) => {
+    return numToWords(digits) + ' ' + suffixMap[suffix.toUpperCase()];
+  });
+}
+
+document.getElementById('genBtn').onclick = ()=>{
+  const airport = document.getElementById('f_airport').value.trim() || 'Metro International';
+  const wd = document.getElementById('f_winddir').value;
+  const ws = document.getElementById('f_windspd').value;
+  const vis = document.getElementById('f_visibility').value;
+  const wx = document.getElementById('f_weather').value.trim();
+  const sky = document.getElementById('f_sky').value.trim();
+  const temp = document.getElementById('f_temp').value;
+  const dew = document.getElementById('f_dewpoint').value;
+  const alt = document.getElementById('f_altimeter').value;
+  const approach = expandRunwayMentions(document.getElementById('f_approach').value.trim());
+  const rw = document.getElementById('f_runway').value;
+  const remarks = expandRunwayMentions(document.getElementById('f_remarks').value.trim());
+
+  const infoWord = letterToPhonetic(state.atisLetter);
+  const now = new Date();
+  const hhmm = now.toISOString().slice(11,16).replace(':','');
+
+  const lines = [];
+  lines.push(`${airport} Information ${infoWord}.`);
+  lines.push(`${numToWords(hhmm)} Zulu weather.`);
+  lines.push(`Wind ${numToWords(wd.padStart(3,'0'))} at ${numToWords(ws)} knots.`);
+  lines.push(`Visibility ${numToWords(vis)}.`);
+  if(wx) lines.push(`${wx}.`);
+  if(sky) lines.push(`${sky}.`);
+  lines.push(`Temperature ${numToWords(temp)}, dewpoint ${numToWords(dew)}.`);
+  lines.push(`Altimeter ${numToWords(alt)}.`);
+  if(approach) lines.push(`${approach} approach in use.`);
+  lines.push(`Landing and departing runway ${runwayWords(rw)}.`);
+  if(remarks) lines.push(remarks);
+  lines.push(`Advise on initial contact you have information ${infoWord}.`);
+
+  document.getElementById('atisScript').value = lines.join('\n');
+  render(); saveLocalSafe();
+};
+
+document.getElementById('voiceSynthBtn').onclick = ()=>{
+  state.voiceMode = 'synth';
+  document.getElementById('voiceSynthBtn').classList.add('active');
+  document.getElementById('voiceRecBtn').classList.remove('active');
+  document.getElementById('synthControls').style.display = 'flex';
+  document.getElementById('recControls').style.display = 'none';
+};
+document.getElementById('voiceRecBtn').onclick = ()=>{
+  state.voiceMode = 'rec';
+  document.getElementById('voiceRecBtn').classList.add('active');
+  document.getElementById('voiceSynthBtn').classList.remove('active');
+  document.getElementById('synthControls').style.display = 'none';
+  document.getElementById('recControls').style.display = 'flex';
+};
+
+function speakText(text, onend){
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.92;
+  u.pitch = 0.55;
+  const voices = speechSynthesis.getVoices();
+  const roboVoice = voices.find(v=>/male|david|daniel|google uk english male/i.test(v.name)) || voices[0];
+  if(roboVoice) u.voice = roboVoice;
+  if(onend) u.onend = onend;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+document.getElementById('previewBtn').onclick = ()=>{
+  const text = document.getElementById('atisScript').value.trim();
+  if(!text) return;
+  speakText(text);
+};
+document.getElementById('broadcastSynthBtn').onclick = async ()=>{
+  const text = document.getElementById('atisScript').value.trim();
+  if(!text) return;
+  const freq = document.getElementById('f_atisfreq').value.trim() || '128.350';
+  try{
+    await window.storage.set('atis-data', JSON.stringify({ letter: state.atisLetter, mode: 'synth', text, freq, ts: Date.now() }), true);
+  }catch(e){ console.error(e); }
+  speakText(text);
+  refreshAtisStatus();
+};
+
+document.getElementById('recBtn').onclick = async ()=>{
+  const btn = document.getElementById('recBtn');
+  if(mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    btn.classList.remove('recording');
+    btn.textContent = '\u25CF RECORD';
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e)=>{ if(e.data.size>0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = async ()=>{
+      const blob = new Blob(recordedChunks, {type:'audio/webm'});
+      const reader = new FileReader();
+      reader.onloadend = ()=>{
+        recordedBase64 = reader.result;
+        const audioEl = document.getElementById('recPreview');
+        audioEl.src = recordedBase64;
+        audioEl.style.display = 'block';
+        document.getElementById('broadcastRecBtn').disabled = false;
+      };
+      reader.readAsDataURL(blob);
+      stream.getTracks().forEach(t=>t.stop());
+    };
+    mediaRecorder.start();
+    btn.classList.add('recording');
+    btn.textContent = '\u25A0 STOP';
+  }catch(e){
+    alert('Could not access microphone. If this is running inside an embedded preview, download the HTML file and open it directly in your browser.');
+  }
+};
+document.getElementById('broadcastRecBtn').onclick = async ()=>{
+  if(!recordedBase64) return;
+  const text = document.getElementById('atisScript').value.trim();
+  const freq = document.getElementById('f_atisfreq').value.trim() || '128.350';
+  try{
+    await window.storage.set('atis-data', JSON.stringify({ letter: state.atisLetter, mode: 'recorded', text, audio: recordedBase64, freq, ts: Date.now() }), true);
+    refreshAtisStatus();
+  }catch(e){
+    alert('Broadcast failed — the recording may be too large. Try a shorter ATIS.');
+  }
+};
+
+async function fetchAcars(){
+  try{ const r = await window.storage.get('acars-log', true); return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function pushAcars(msg){
+  try{
+    const existing = await fetchAcars();
+    existing.push(msg);
+    const trimmed = existing.slice(-60);
+    await window.storage.set('acars-log', JSON.stringify(trimmed), true);
+    return trimmed;
+  }catch(e){ return null; }
+}
+async function refreshAcars(){
+  const feed = document.getElementById('acarsFeed');
+  const msgs = await fetchAcars();
+  if(!msgs || msgs.length === 0){ feed.innerHTML = '<div class="pdc-empty">No ACARS messages yet.</div>'; return; }
+  feed.innerHTML = msgs.map(m=>`
+    <div class="pdc-msg ${m.callsign === 'ATC' || m.type === 'reply' ? 'reply' : ''}">
+      <div class="meta">${m.callsign || 'UNK'} — ${m.type} — ${new Date(m.ts).toLocaleTimeString()}</div>
+      <div class="body">${escapeHtml(m.text)}</div>
+    </div>`).join('');
+  feed.scrollTop = feed.scrollHeight;
+}
+document.getElementById('acarsSend').onclick = async ()=>{
+  const callsign = document.getElementById('acarsCallsign').value.trim() || 'ATC';
+  const text = document.getElementById('acarsText').value.trim();
+  if(!text) return;
+  const msg = { callsign, type: 'reply', text, ts: Date.now() };
+  const updated = await pushAcars(msg);
+  document.getElementById('acarsText').value = '';
+  if(updated) refreshAcars();
+};
+
+function pttLabel(){ return state.callsign || state.activeLabel || 'ATC'; }
+function keyLabel(key){ if(key === ' ') return 'Space'; if(key.length === 1) return key.toUpperCase(); return key; }
+let pttActive = false, pttHeartbeatTimer = null, bindingKey = false;
+function isTypingTarget(el){ return el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT'); }
+async function broadcastPTT(active){
+  const key = 'ptt:' + freqKey(state.activeFreq);
+  if(active){ try{ await window.storage.set(key, JSON.stringify({ label: pttLabel(), ts: Date.now() }), true); }catch(e){} }
+  else { try{ await window.storage.delete(key, true); }catch(e){} }
+}
+function startPTT(){
+  if(pttActive) return;
+  pttActive = true;
+  document.getElementById('pttBtn').classList.add('active');
+  broadcastPTT(true);
+  if(window.ccVoice && window.ccVoice.active) window.ccVoice.setMicEnabled(true);
+  pttHeartbeatTimer = setInterval(()=> broadcastPTT(true), 1000);
+}
+function stopPTT(){
+  if(!pttActive) return;
+  pttActive = false;
+  document.getElementById('pttBtn').classList.remove('active');
+  clearInterval(pttHeartbeatTimer);
+  broadcastPTT(false);
+  if(window.ccVoice && window.ccVoice.active) window.ccVoice.setMicEnabled(false);
+}
+
+let bridgeSocket = null;
+function updateBridgeStatus(text){
+  const el = document.getElementById('bridgeStatus');
+  if(el) el.textContent = text;
+}
+function connectBridge(){
+  if(bridgeSocket) return;
+  try{
+    bridgeSocket = new WebSocket('ws://localhost:5055');
+  }catch(e){ updateBridgeStatus('Global PTT: bridge app not running'); return; }
+  bridgeSocket.onopen = ()=>{ updateBridgeStatus('Global PTT: connected \u2014 works outside the browser too'); };
+  bridgeSocket.onclose = ()=>{
+    updateBridgeStatus('Global PTT: bridge app not running (see README)');
+    bridgeSocket = null;
+  };
+  bridgeSocket.onerror = ()=>{};
+  bridgeSocket.onmessage = (ev)=>{
+    let msg;
+    try{ msg = JSON.parse(ev.data); }catch(e){ return; }
+    if(msg.type === 'ptt'){
+      if(msg.active) startPTT(); else stopPTT();
+    }
+  };
+}
+function disconnectBridge(){
+  if(bridgeSocket){ bridgeSocket.close(); bridgeSocket = null; }
+  updateBridgeStatus('Global PTT: off (works only while this tab is focused)');
+}
+document.getElementById('bridgeToggleBtn').onclick = ()=>{
+  state.globalPttEnabled = !state.globalPttEnabled;
+  saveLocalSafe();
+  const btn = document.getElementById('bridgeToggleBtn');
+  if(state.globalPttEnabled){
+    btn.textContent = 'DISABLE GLOBAL PTT';
+    btn.classList.add('on');
+    connectBridge();
+  } else {
+    btn.textContent = 'ENABLE GLOBAL PTT';
+    btn.classList.remove('on');
+    disconnectBridge();
+  }
+};
+
+document.getElementById('voiceJoinBtn').onclick = async ()=>{
+  const btn = document.getElementById('voiceJoinBtn');
+  const status = document.getElementById('voiceStatus');
+  if(window.ccVoice.active){
+    window.ccVoice.leaveVoice();
+    btn.textContent = 'JOIN VOICE CHAT';
+    btn.classList.remove('joined');
+    status.textContent = 'Not connected.';
+  } else {
+    btn.textContent = 'CONNECTING...';
+    const ok = await window.ccVoice.joinVoice();
+    if(ok){
+      btn.textContent = 'LEAVE VOICE CHAT';
+      btn.classList.add('joined');
+      status.textContent = 'Connected \u2014 hold PTT to transmit.';
+      refreshMicList(); // labels only populate once mic permission has been granted
+    } else {
+      btn.textContent = 'JOIN VOICE CHAT';
+      status.textContent = 'Mic access failed.';
+    }
+  }
+};
+
+async function refreshMicList(){
+  const sel = document.getElementById('micSelect');
+  const mics = await window.ccVoice.listMics();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Default microphone</option>';
+  mics.forEach((m, i)=>{
+    const opt = document.createElement('option');
+    opt.value = m.deviceId;
+    opt.textContent = m.label || ('Microphone ' + (i+1));
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(o=>o.value === current)) sel.value = current;
+  else if(state.micDeviceId && [...sel.options].some(o=>o.value === state.micDeviceId)) sel.value = state.micDeviceId;
+}
+document.getElementById('micSelect').onchange = async (e)=>{
+  state.micDeviceId = e.target.value;
+  saveLocalSafe();
+  await window.ccVoice.setMic(e.target.value || null);
+};
+
+async function refreshSpeakerList(){
+  const sel = document.getElementById('speakerSelect');
+  if(!window.ccVoice.sinkSupported){
+    sel.innerHTML = '<option value="">Not supported in this browser</option>';
+    sel.disabled = true;
+    return;
+  }
+  const speakers = await window.ccVoice.listSpeakers();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Default speaker</option>';
+  speakers.forEach((s, i)=>{
+    const opt = document.createElement('option');
+    opt.value = s.deviceId;
+    opt.textContent = s.label || ('Speaker ' + (i+1));
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(o=>o.value === current)) sel.value = current;
+  else if(state.speakerDeviceId && [...sel.options].some(o=>o.value === state.speakerDeviceId)) sel.value = state.speakerDeviceId;
+}
+document.getElementById('speakerSelect').onchange = async (e)=>{
+  state.speakerDeviceId = e.target.value;
+  saveLocalSafe();
+  await window.ccVoice.setSpeaker(e.target.value || null);
+};
+document.addEventListener('cc-mic-devices-changed', ()=>{ refreshMicList(); refreshSpeakerList(); });
+refreshMicList();
+refreshSpeakerList();
+
+document.addEventListener('cc-voice-audio-blocked', ()=>{
+  const status = document.getElementById('voiceStatus');
+  status.innerHTML = '<span style="color:var(--red);cursor:pointer;text-decoration:underline;" id="unlockAudioLink">Your browser blocked audio playback \u2014 click here to enable it</span>';
+  document.getElementById('unlockAudioLink').onclick = ()=>{
+    window.ccVoice.unlockAudio();
+    status.textContent = `Connected \u2014 ${window.ccVoice.peerCount} peer(s) \u2014 hold PTT to transmit.`;
+  };
+});
+document.addEventListener('cc-voice-audio-blocked', ()=>{
+  document.getElementById('enableAudioBtn').style.display = 'inline-block';
+});
+document.getElementById('enableAudioBtn').onclick = ()=>{
+  document.querySelectorAll('audio[id^="cc-voice-audio-"]').forEach(a=>{ a.play().catch(()=>{}); });
+  document.getElementById('enableAudioBtn').style.display = 'none';
+};
+document.addEventListener('cc-voice-status', (e)=>{
+  const status = document.getElementById('voiceStatus');
+  if(!status) return;
+  if(e.detail.active){
+    status.textContent = `Connected \u2014 ${e.detail.peerCount} peer(s) \u2014 hold PTT to transmit.`;
+  }
+});
+const pttBtnEl = document.getElementById('pttBtn');
+pttBtnEl.addEventListener('mousedown', startPTT);
+pttBtnEl.addEventListener('touchstart', (e)=>{ e.preventDefault(); startPTT(); }, {passive:false});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(evt=> pttBtnEl.addEventListener(evt, stopPTT));
+document.getElementById('pttBindBtn').onclick = (e)=>{
+  bindingKey = true;
+  const btn = e.target;
+  btn.classList.add('listening');
+  btn.textContent = 'PRESS A KEY...';
+  const handler = (ev)=>{
+    ev.preventDefault();
+    state.pttKey = ev.key;
+    saveLocalSafe();
+    document.getElementById('pttKeyDisplay').textContent = keyLabel(ev.key);
+    btn.classList.remove('listening');
+    btn.textContent = 'BIND KEY';
+    bindingKey = false;
+    window.removeEventListener('keydown', handler, true);
+  };
+  window.addEventListener('keydown', handler, true);
+};
+window.addEventListener('keydown', (e)=>{
+  if(bindingKey) return;
+  if(isTypingTarget(e.target)) return;
+  if(state.pttKey && e.key === state.pttKey){ e.preventDefault(); startPTT(); }
+});
+window.addEventListener('keyup', (e)=>{
+  if(state.pttKey && e.key === state.pttKey){ stopPTT(); }
+});
+async function refreshOnAir(){
+  const el = document.getElementById('onAirLine');
+  try{
+    const r = await window.storage.get('ptt:'+freqKey(state.activeFreq), true);
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      if(Date.now() - d.ts < 3000){ el.textContent = `ON AIR: ${d.label}`; el.classList.add('live'); return; }
+    }
+  }catch(e){}
+  el.textContent = 'Frequency clear.';
+  el.classList.remove('live');
+}
+
+function tickClock(){ document.getElementById('clock').textContent = new Date().toISOString().slice(11,19) + 'Z'; }
+setInterval(tickClock, 1000); tickClock();
+setInterval(()=>{ refreshPdc(); refreshAtisStatus(); refreshAcars(); refreshFlightPlans(); }, 4000);
+setInterval(refreshRadar, 1500);
+setInterval(refreshOnAir, 1200);
+
+loadLocal().then(()=> { signOnFrequency(state.activeFreq, state.activeLabel); broadcastAirport(); refreshMicList(); refreshSpeakerList(); if(state.speakerDeviceId) window.ccVoice.setSpeaker(state.speakerDeviceId); if(state.globalPttEnabled){ document.getElementById('bridgeToggleBtn').textContent = 'DISABLE GLOBAL PTT'; document.getElementById('bridgeToggleBtn').classList.add('on'); connectBridge(); } });
+window.addEventListener('beforeunload', ()=>{ signOffFrequency(state.activeFreq); });
+refreshAcars();
+refreshOnAir();
+</script>
+</body>
+</html>

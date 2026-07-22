@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GROUND CREW PANEL // CC COMMS PANEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bezel:#202225; --bezel-hi:#3a3d41; --face:#26292c; --face-lo:#1b1d1f;
+    --rivet:#0c0d0e; --amber:#ffb000; --amber-dim:#7a5500;
+    --green:#39ff6a; --green-dim:#1c5c2c; --red:#ff3b30; --red-dim:#5c1712;
+    --blue:#4fc3ff; --blue-dim:#1a4a63;
+    --ink:#c9cdd1; --ink-dim:#7d8288;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    background:radial-gradient(ellipse at 50% 0%, #2c2f33, #131416 70%);
+    font-family:'Inter',system-ui,sans-serif; color:var(--ink);
+    padding:24px 12px 60px; display:flex; flex-direction:column; align-items:center;
+  }
+  .rack{width:100%; max-width:880px; display:flex; flex-direction:column; gap:14px;}
+  .titlebar{display:flex; justify-content:space-between; align-items:center; padding:0 6px 4px;}
+  .titlebar h1{font-size:13px; letter-spacing:.18em; font-weight:800; color:var(--ink-dim); margin:0; text-transform:uppercase;}
+  .titlebar h1 span{color:var(--blue);}
+  .badge{font-size:10px; font-weight:700; letter-spacing:.1em; color:var(--blue); border:1px solid var(--blue-dim); padding:4px 8px; border-radius:4px;}
+
+  .panel{
+    background:linear-gradient(180deg,var(--bezel),#17181a); border-radius:10px; padding:16px;
+    position:relative; box-shadow:0 8px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); border:1px solid #000;
+  }
+  .rivet{position:absolute; width:6px; height:6px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #5a5d61, var(--rivet));}
+  .rivet.tl{top:8px;left:8px;} .rivet.tr{top:8px;right:8px;} .rivet.bl{bottom:8px;left:8px;} .rivet.br{bottom:8px;right:8px;}
+  .panel-label{font-size:10px; letter-spacing:.16em; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin:0 0 10px 2px;}
+
+  .com-row{display:flex; gap:10px; align-items:stretch; flex-wrap:wrap;}
+  .freq-slot{flex:1; min-width:150px; background:var(--face-lo); border-radius:6px; padding:8px 12px; border:1px solid #000; box-shadow:inset 0 2px 6px rgba(0,0,0,.6);}
+  .freq-slot .tag{font-size:9px; letter-spacing:.14em; font-weight:700; text-transform:uppercase;}
+  .freq-slot.active .tag{color:var(--blue);} .freq-slot.standby .tag{color:var(--ink-dim);}
+  .freq-display{font-family:'Share Tech Mono',monospace; font-size:30px; letter-spacing:.03em; margin-top:2px;}
+  .freq-slot.active .freq-display{color:var(--blue); text-shadow:0 0 10px rgba(79,195,255,.5);}
+  .freq-slot.standby .freq-display{color:var(--amber-dim);}
+  .freq-label-input{display:none;}
+  .swap-btn{width:56px; border-radius:50%; border:2px solid var(--bezel-hi); background:radial-gradient(circle at 35% 30%, #4a4d51, #1e2022 70%); color:var(--ink); font-size:18px; cursor:pointer; align-self:center; box-shadow:0 3px 6px rgba(0,0,0,.5);}
+  .swap-btn:active{transform:translateY(1px);}
+
+  .knob-set{display:flex; gap:28px; justify-content:center; margin-top:10px;}
+  .knob-unit{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .knob{width:60px; height:60px; border-radius:50%; position:relative; cursor:pointer; user-select:none;
+    background:radial-gradient(circle at 35% 30%, #4a4d51, #1e2022 70%);
+    border:3px solid var(--bezel-hi);
+    box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.15);}
+  .knob:active{filter:brightness(1.2);}
+  .knob-notch{position:absolute; top:5px; left:50%; width:4px; height:16px; background:var(--amber); border-radius:2px; transform:translateX(-50%) rotate(0deg); transform-origin:50% 25px;}
+  .knob-label{font-size:9px; letter-spacing:.12em; color:var(--ink-dim); font-weight:700;}
+  .knob-hint{text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.06em; margin-top:6px;}
+
+  .presets{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;}
+  .preset-btn{flex:1; min-width:70px; background:var(--face-lo); border:1px solid #000; border-radius:5px; padding:6px 4px; cursor:pointer; text-align:center;}
+  .preset-btn .pname{font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--ink-dim);}
+  .preset-btn .pfreq{font-family:'Share Tech Mono'; font-size:13px; color:var(--ink);}
+  .preset-btn.live{border-color:var(--blue-dim);} .preset-btn.live .pname{color:var(--blue);}
+  .roster-line{font-size:11px; color:var(--ink-dim); margin-top:4px;}
+  .roster-line .who{color:var(--blue);}
+
+  .queue-item{background:var(--face-lo); border:1px solid #000; border-radius:6px; padding:10px 12px; margin-bottom:8px;}
+  .queue-item.complete{opacity:.55;}
+  .queue-item .qmeta{font-size:10px; color:var(--ink-dim); margin-bottom:4px; letter-spacing:.04em;}
+  .queue-item .qservice{font-family:'Share Tech Mono'; font-size:15px; color:var(--amber); font-weight:700; letter-spacing:.04em;}
+  .queue-item .qnotes{font-size:12px; color:var(--ink); margin-top:4px;}
+  .qstatus{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.08em; padding:3px 8px; border-radius:4px; margin-left:8px;}
+  .qstatus.REQUESTED{background:var(--red-dim); color:var(--red);}
+  .qstatus.IN_PROGRESS{background:var(--amber-dim); color:var(--amber);}
+  .qstatus.COMPLETE{background:var(--green-dim); color:var(--green);}
+  .queue-btns{display:flex; gap:6px; margin-top:8px;}
+  .qbtn{font-size:10px; font-weight:700; letter-spacing:.05em; padding:6px 10px; border-radius:5px; border:1px solid #000; cursor:pointer; background:var(--face-lo); color:var(--ink-dim);}
+  .qbtn.start{color:var(--amber); border-color:var(--amber-dim);}
+  .qbtn.complete{color:var(--green); border-color:var(--green-dim);}
+  .qbtn.reset{color:var(--red); border-color:var(--red-dim);}
+  .queue-empty{color:var(--ink-dim); font-style:italic; font-size:12px;}
+  .queue-list{max-height:420px; overflow-y:auto;}
+
+  .status-strip{display:flex; justify-content:space-between; font-size:10px; color:var(--ink-dim); padding:0 6px; letter-spacing:.05em;}
+  .status-strip .dot{color:var(--blue);}
+  ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#3a3d41; border-radius:4px;}
+  .ptt-row{display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;}
+  .ptt-btn{flex:1; min-width:140px; padding:14px; border-radius:8px; border:2px solid var(--bezel-hi); background:linear-gradient(180deg,#3a3d41,#1e2022); color:var(--ink); font-weight:800; letter-spacing:.12em; font-size:14px; cursor:pointer; user-select:none; transition:all .1s ease;}
+  .ptt-btn.active{background:linear-gradient(180deg,#ff3b30,#5c1712); color:#fff; box-shadow:0 0 20px rgba(255,59,48,.6); border-color:var(--red);}
+  .ptt-keybind{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ink-dim);}
+  .ptt-keybind b{color:var(--amber); font-family:'Share Tech Mono'; border:1px solid #000; background:var(--face-lo); padding:3px 8px; border-radius:4px;}
+  .bind-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink-dim); font-weight:700; font-size:10px; letter-spacing:.06em; padding:7px 10px; border-radius:5px; cursor:pointer;}
+  .bind-btn.listening{color:var(--amber); border-color:var(--amber-dim);}
+  .onair-line{font-size:11px; color:var(--ink-dim); margin-top:8px;}
+  .onair-line.live{color:var(--red); font-weight:700;}
+  .voice-row{display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .voice-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink); font-weight:700; letter-spacing:.06em; padding:9px 16px; border-radius:6px; cursor:pointer; font-size:11px;}
+  .voice-btn.joined{color:var(--green); border-color:var(--green-dim);}
+  .voice-status{font-size:10px; color:var(--ink-dim); letter-spacing:.04em;}
+  .mic-select{background:var(--face-lo); border:1px solid #000; color:var(--ink); font-weight:600; letter-spacing:.02em; padding:9px 10px; border-radius:6px; font-size:11px; max-width:220px;}
+  .enable-audio-btn{display:none; background:linear-gradient(180deg,#5c1712,#2a0a08); border:1px solid #000; color:var(--red); font-weight:800; letter-spacing:.06em; padding:9px 16px; border-radius:6px; cursor:pointer; font-size:11px; animation:recpulse 1s infinite;}
+  .bridge-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;}
+  .bridge-btn{background:var(--face-lo); border:1px solid #000; color:var(--ink-dim); font-weight:700; font-size:10px; letter-spacing:.06em; padding:7px 12px; border-radius:5px; cursor:pointer;}
+  .bridge-btn.on{color:var(--green); border-color:var(--green-dim);}
+  .bridge-status{font-size:10px; color:var(--ink-dim); letter-spacing:.04em;}
+</style>
+</head>
+<body>
+<div class="rack">
+  <div class="titlebar">
+    <h1>CC COMMS PANEL <span>&nbsp;GROUND CREW</span></h1>
+    <div class="badge">GROUND OPS</div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">COM Radio</div>
+    <div class="com-row">
+      <div class="freq-slot active" id="activeSlot">
+        <div class="tag">Active</div>
+        <div class="freq-display" id="activeFreqDisp">121.900</div>
+        <input class="freq-label-input" id="activeLabelInput" value="GROUND" maxlength="10">
+      </div>
+      <button class="swap-btn" id="swapBtn" title="Swap active/standby">&#8646;</button>
+      <div class="freq-slot standby" id="standbySlot">
+        <div class="tag">Standby</div>
+        <div class="freq-display" id="standbyFreqDisp">121.700</div>
+        <input class="freq-label-input" id="standbyLabelInput" value="DEL" maxlength="10">
+      </div>
+    </div>
+    <div class="knob-set">
+      <div class="knob-unit">
+        <div class="knob" id="mhzKnob"><div class="knob-notch"></div></div>
+        <div class="knob-label">MHZ</div>
+      </div>
+      <div class="knob-unit">
+        <div class="knob" id="khzKnob"><div class="knob-notch"></div></div>
+        <div class="knob-label">KHZ</div>
+      </div>
+    </div>
+    <div class="knob-hint">Click left/right of a knob, or scroll on it, to tune Standby</div>
+    <div class="panel-label" style="margin-top:14px;">Presets</div>
+    <div class="presets" id="presetRow"></div>
+    <div class="roster-line" id="rosterLine">Signed on as ground crew on this frequency.</div>
+    <div class="voice-row">
+      <button class="voice-btn" id="voiceJoinBtn">JOIN VOICE CHAT</button>
+      <select class="mic-select" id="micSelect"><option value="">Default microphone</option></select>
+      <select class="mic-select" id="speakerSelect"><option value="">Default speaker</option></select>
+      <span class="voice-status" id="voiceStatus">Not connected.</span>
+      <button class="enable-audio-btn" id="enableAudioBtn">⚠ CLICK TO ENABLE AUDIO</button>
+    </div>
+    <div class="ptt-row">
+      <button class="ptt-btn" id="pttBtn">HOLD TO TALK</button>
+      <div class="ptt-keybind">
+        Key: <b id="pttKeyDisplay">Space</b>
+        <button class="bind-btn" id="pttBindBtn">BIND KEY</button>
+      </div>
+    </div>
+    <div class="bridge-row">
+      <button class="bridge-btn" id="bridgeToggleBtn">ENABLE GLOBAL PTT</button>
+      <span class="bridge-status" id="bridgeStatus">Global PTT: off (works only while this tab is focused)</span>
+    </div>
+    <div class="onair-line" id="onAirLine">Frequency clear.</div>
+  </div>
+
+  <div class="panel">
+    <div class="rivet tl"></div><div class="rivet tr"></div><div class="rivet bl"></div><div class="rivet br"></div>
+    <div class="panel-label">Ground Service Requests</div>
+    <div class="queue-list" id="serviceQueue"><div class="queue-empty">No requests yet.</div></div>
+  </div>
+
+  <div class="status-strip">
+    <span><span class="dot">&#9679;</span> GROUND OPS — syncs every 4s</span>
+    <span id="clock"></span>
+  </div>
+</div>
+
+<script src="/storage-shim.js"></script>
+<script src="/voice.js"></script>
+<script>
+const DEFAULT_PRESETS = [
+  {name:'GND', freq:'120.400'}, {name:'TWR', freq:'118.100'}, {name:'CTR', freq:'124.850'},
+];
+const SERVICE_LABELS = {
+  PUSHBACK:'Pushback', FUEL:'Fuel', BAGGAGE:'Baggage/Cargo', DEICE:'De-Ice', MARSHALL:'Marshall', OTHER:'Other'
+};
+
+let state = {
+  crewName: '',
+  pttKey: '`',
+  micDeviceId: '',
+  globalPttEnabled: false,
+  speakerDeviceId: '',
+  activeFreq: '120.400', activeLabel: 'GROUND',
+  standbyFreq: '118.100', standbyLabel: 'TOWER',
+};
+
+function freqKey(f){ return f.replace(/\./g,'_'); }
+function fmtFreq(n){ return (Math.round(n*1000)/1000).toFixed(3); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadLocal(){
+  try{
+    const r = await window.storage.get('groundcrew-settings', false);
+    if(r && r.value) Object.assign(state, JSON.parse(r.value));
+  }catch(e){}
+  render();
+}
+async function saveLocalSafe(){
+  try{ await window.storage.set('groundcrew-settings', JSON.stringify(state), false); }catch(e){}
+}
+
+async function signOnFrequency(freq, label){
+  try{ await window.storage.set('roster:'+freqKey(freq), JSON.stringify({label: state.crewName || label || 'GND CREW', signedOn:true, ts:Date.now()}), true); }catch(e){}
+}
+async function signOffFrequency(freq){
+  try{ await window.storage.delete('roster:'+freqKey(freq), true); }catch(e){}
+}
+
+async function fetchServiceQueue(){
+  try{ const r = await window.storage.get('ground-services', true); return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function saveServiceQueue(list){
+  try{ await window.storage.set('ground-services', JSON.stringify(list), true); }catch(e){}
+}
+
+function render(){
+  document.getElementById('pttKeyDisplay').textContent = keyLabel(state.pttKey || ' ');
+  document.getElementById('activeFreqDisp').textContent = state.activeFreq;
+  document.getElementById('standbyFreqDisp').textContent = state.standbyFreq;
+  document.getElementById('activeLabelInput').value = state.activeLabel;
+  document.getElementById('standbyLabelInput').value = state.standbyLabel;
+  renderPresets();
+  refreshQueue();
+}
+
+function renderPresets(){
+  const row = document.getElementById('presetRow');
+  row.innerHTML = '';
+  DEFAULT_PRESETS.forEach(p=>{
+    const btn = document.createElement('div');
+    btn.className = 'preset-btn' + (p.freq === state.activeFreq ? ' live' : '');
+    btn.innerHTML = `<div class="pname">${p.name}</div><div class="pfreq">${p.freq}</div>`;
+    btn.onclick = ()=>{ state.standbyFreq = p.freq; state.standbyLabel = p.name; render(); saveLocalSafe(); };
+    row.appendChild(btn);
+  });
+}
+
+async function refreshQueue(){
+  const wrap = document.getElementById('serviceQueue');
+  const items = await fetchServiceQueue();
+  if(!items || items.length === 0){ wrap.innerHTML = '<div class="queue-empty">No requests yet.</div>'; return; }
+  wrap.innerHTML = items.slice().reverse().map(it=>`
+    <div class="queue-item ${it.status==='COMPLETE' ? 'complete' : ''}" data-item="${it.id}">
+      <div class="qmeta">${it.callsign || 'UNK'}${it.gate ? ' — Gate/Stand '+escapeHtml(it.gate) : ''} — ${new Date(it.ts).toLocaleTimeString()}
+        <span class="qstatus ${it.status}">${it.status.replace('_',' ')}</span>
+      </div>
+      <div class="qservice">${SERVICE_LABELS[it.service] || it.service}</div>
+      ${it.notes ? `<div class="qnotes">${escapeHtml(it.notes)}</div>` : ''}
+      <div class="queue-btns">
+        <button class="qbtn start" data-action="IN_PROGRESS">START</button>
+        <button class="qbtn complete" data-action="COMPLETE">COMPLETE</button>
+        <button class="qbtn reset" data-action="REQUESTED">RESET</button>
+      </div>
+    </div>`).join('');
+
+  wrap.querySelectorAll('.queue-item').forEach(el=>{
+    const id = el.dataset.item;
+    el.querySelectorAll('[data-action]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const list = await fetchServiceQueue();
+        const idx = list.findIndex(x=>x.id === id);
+        if(idx === -1) return;
+        list[idx].status = btn.dataset.action;
+        await saveServiceQueue(list);
+        refreshQueue();
+      };
+    });
+  });
+}
+
+document.getElementById('swapBtn').onclick = async ()=>{
+  await signOffFrequency(state.activeFreq);
+  [state.activeFreq, state.standbyFreq] = [state.standbyFreq, state.activeFreq];
+  [state.activeLabel, state.standbyLabel] = [state.standbyLabel, state.activeLabel];
+  render(); saveLocalSafe();
+  await signOnFrequency(state.activeFreq, state.activeLabel);
+};
+
+function adjustStandby(delta){
+  let f = parseFloat(state.standbyFreq) + delta;
+  if(f < 118) f = 118; if(f > 136.975) f = 136.975;
+  state.standbyFreq = fmtFreq(f); render(); saveLocalSafe();
+}
+function attachKnob(knobId, step){
+  const knob = document.getElementById(knobId);
+  const notch = knob.querySelector('.knob-notch');
+  let rot = 0;
+  function turn(dir){
+    rot += dir*20;
+    notch.style.transform = `translateX(-50%) rotate(${rot}deg)`;
+    adjustStandby(dir*step);
+  }
+  knob.addEventListener('click', (e)=>{
+    const rect = knob.getBoundingClientRect();
+    const dir = (e.clientX - (rect.left+rect.width/2)) >= 0 ? 1 : -1;
+    turn(dir);
+  });
+  knob.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    turn(e.deltaY < 0 ? 1 : -1);
+  }, {passive:false});
+}
+attachKnob('mhzKnob', 1);
+attachKnob('khzKnob', 0.025);
+
+document.getElementById('activeLabelInput').onchange = (e)=>{ state.activeLabel = e.target.value.toUpperCase(); render(); saveLocalSafe(); signOnFrequency(state.activeFreq, state.activeLabel); };
+document.getElementById('standbyLabelInput').onchange = (e)=>{ state.standbyLabel = e.target.value.toUpperCase(); saveLocalSafe(); };
+
+function pttLabel(){ return state.crewName || state.activeLabel || 'Ground Crew'; }
+function keyLabel(key){ if(key === ' ') return 'Space'; if(key.length === 1) return key.toUpperCase(); return key; }
+let pttActive = false, pttHeartbeatTimer = null, bindingKey = false;
+function isTypingTarget(el){ return el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT'); }
+async function broadcastPTT(active){
+  const key = 'ptt:' + freqKey(state.activeFreq);
+  if(active){ try{ await window.storage.set(key, JSON.stringify({ label: pttLabel(), ts: Date.now() }), true); }catch(e){} }
+  else { try{ await window.storage.delete(key, true); }catch(e){} }
+}
+function startPTT(){
+  if(pttActive) return;
+  pttActive = true;
+  document.getElementById('pttBtn').classList.add('active');
+  broadcastPTT(true);
+  if(window.ccVoice && window.ccVoice.active) window.ccVoice.setMicEnabled(true);
+  pttHeartbeatTimer = setInterval(()=> broadcastPTT(true), 1000);
+}
+function stopPTT(){
+  if(!pttActive) return;
+  pttActive = false;
+  document.getElementById('pttBtn').classList.remove('active');
+  clearInterval(pttHeartbeatTimer);
+  broadcastPTT(false);
+  if(window.ccVoice && window.ccVoice.active) window.ccVoice.setMicEnabled(false);
+}
+
+let bridgeSocket = null;
+function updateBridgeStatus(text){
+  const el = document.getElementById('bridgeStatus');
+  if(el) el.textContent = text;
+}
+function connectBridge(){
+  if(bridgeSocket) return;
+  try{
+    bridgeSocket = new WebSocket('ws://localhost:5055');
+  }catch(e){ updateBridgeStatus('Global PTT: bridge app not running'); return; }
+  bridgeSocket.onopen = ()=>{ updateBridgeStatus('Global PTT: connected \u2014 works outside the browser too'); };
+  bridgeSocket.onclose = ()=>{
+    updateBridgeStatus('Global PTT: bridge app not running (see README)');
+    bridgeSocket = null;
+  };
+  bridgeSocket.onerror = ()=>{};
+  bridgeSocket.onmessage = (ev)=>{
+    let msg;
+    try{ msg = JSON.parse(ev.data); }catch(e){ return; }
+    if(msg.type === 'ptt'){
+      if(msg.active) startPTT(); else stopPTT();
+    }
+  };
+}
+function disconnectBridge(){
+  if(bridgeSocket){ bridgeSocket.close(); bridgeSocket = null; }
+  updateBridgeStatus('Global PTT: off (works only while this tab is focused)');
+}
+document.getElementById('bridgeToggleBtn').onclick = ()=>{
+  state.globalPttEnabled = !state.globalPttEnabled;
+  saveLocalSafe();
+  const btn = document.getElementById('bridgeToggleBtn');
+  if(state.globalPttEnabled){
+    btn.textContent = 'DISABLE GLOBAL PTT';
+    btn.classList.add('on');
+    connectBridge();
+  } else {
+    btn.textContent = 'ENABLE GLOBAL PTT';
+    btn.classList.remove('on');
+    disconnectBridge();
+  }
+};
+
+document.getElementById('voiceJoinBtn').onclick = async ()=>{
+  const btn = document.getElementById('voiceJoinBtn');
+  const status = document.getElementById('voiceStatus');
+  if(window.ccVoice.active){
+    window.ccVoice.leaveVoice();
+    btn.textContent = 'JOIN VOICE CHAT';
+    btn.classList.remove('joined');
+    status.textContent = 'Not connected.';
+  } else {
+    btn.textContent = 'CONNECTING...';
+    const ok = await window.ccVoice.joinVoice();
+    if(ok){
+      btn.textContent = 'LEAVE VOICE CHAT';
+      btn.classList.add('joined');
+      status.textContent = 'Connected \u2014 hold PTT to transmit.';
+      refreshMicList(); // labels only populate once mic permission has been granted
+    } else {
+      btn.textContent = 'JOIN VOICE CHAT';
+      status.textContent = 'Mic access failed.';
+    }
+  }
+};
+
+async function refreshMicList(){
+  const sel = document.getElementById('micSelect');
+  const mics = await window.ccVoice.listMics();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Default microphone</option>';
+  mics.forEach((m, i)=>{
+    const opt = document.createElement('option');
+    opt.value = m.deviceId;
+    opt.textContent = m.label || ('Microphone ' + (i+1));
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(o=>o.value === current)) sel.value = current;
+  else if(state.micDeviceId && [...sel.options].some(o=>o.value === state.micDeviceId)) sel.value = state.micDeviceId;
+}
+document.getElementById('micSelect').onchange = async (e)=>{
+  state.micDeviceId = e.target.value;
+  saveLocalSafe();
+  await window.ccVoice.setMic(e.target.value || null);
+};
+
+async function refreshSpeakerList(){
+  const sel = document.getElementById('speakerSelect');
+  if(!window.ccVoice.sinkSupported){
+    sel.innerHTML = '<option value="">Not supported in this browser</option>';
+    sel.disabled = true;
+    return;
+  }
+  const speakers = await window.ccVoice.listSpeakers();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Default speaker</option>';
+  speakers.forEach((s, i)=>{
+    const opt = document.createElement('option');
+    opt.value = s.deviceId;
+    opt.textContent = s.label || ('Speaker ' + (i+1));
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(o=>o.value === current)) sel.value = current;
+  else if(state.speakerDeviceId && [...sel.options].some(o=>o.value === state.speakerDeviceId)) sel.value = state.speakerDeviceId;
+}
+document.getElementById('speakerSelect').onchange = async (e)=>{
+  state.speakerDeviceId = e.target.value;
+  saveLocalSafe();
+  await window.ccVoice.setSpeaker(e.target.value || null);
+};
+document.addEventListener('cc-mic-devices-changed', ()=>{ refreshMicList(); refreshSpeakerList(); });
+refreshMicList();
+refreshSpeakerList();
+
+document.addEventListener('cc-voice-audio-blocked', ()=>{
+  const status = document.getElementById('voiceStatus');
+  status.innerHTML = '<span style="color:var(--red);cursor:pointer;text-decoration:underline;" id="unlockAudioLink">Your browser blocked audio playback \u2014 click here to enable it</span>';
+  document.getElementById('unlockAudioLink').onclick = ()=>{
+    window.ccVoice.unlockAudio();
+    status.textContent = `Connected \u2014 ${window.ccVoice.peerCount} peer(s) \u2014 hold PTT to transmit.`;
+  };
+});
+document.addEventListener('cc-voice-audio-blocked', ()=>{
+  document.getElementById('enableAudioBtn').style.display = 'inline-block';
+});
+document.getElementById('enableAudioBtn').onclick = ()=>{
+  document.querySelectorAll('audio[id^="cc-voice-audio-"]').forEach(a=>{ a.play().catch(()=>{}); });
+  document.getElementById('enableAudioBtn').style.display = 'none';
+};
+document.addEventListener('cc-voice-status', (e)=>{
+  const status = document.getElementById('voiceStatus');
+  if(!status) return;
+  if(e.detail.active){
+    status.textContent = `Connected \u2014 ${e.detail.peerCount} peer(s) \u2014 hold PTT to transmit.`;
+  }
+});
+const pttBtnEl = document.getElementById('pttBtn');
+pttBtnEl.addEventListener('mousedown', startPTT);
+pttBtnEl.addEventListener('touchstart', (e)=>{ e.preventDefault(); startPTT(); }, {passive:false});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(evt=> pttBtnEl.addEventListener(evt, stopPTT));
+document.getElementById('pttBindBtn').onclick = (e)=>{
+  bindingKey = true;
+  const btn = e.target;
+  btn.classList.add('listening');
+  btn.textContent = 'PRESS A KEY...';
+  const handler = (ev)=>{
+    ev.preventDefault();
+    state.pttKey = ev.key;
+    saveLocalSafe();
+    document.getElementById('pttKeyDisplay').textContent = keyLabel(ev.key);
+    btn.classList.remove('listening');
+    btn.textContent = 'BIND KEY';
+    bindingKey = false;
+    window.removeEventListener('keydown', handler, true);
+  };
+  window.addEventListener('keydown', handler, true);
+};
+window.addEventListener('keydown', (e)=>{
+  if(bindingKey) return;
+  if(isTypingTarget(e.target)) return;
+  if(state.pttKey && e.key === state.pttKey){ e.preventDefault(); startPTT(); }
+});
+window.addEventListener('keyup', (e)=>{
+  if(state.pttKey && e.key === state.pttKey){ stopPTT(); }
+});
+async function refreshOnAir(){
+  const el = document.getElementById('onAirLine');
+  try{
+    const r = await window.storage.get('ptt:'+freqKey(state.activeFreq), true);
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      if(Date.now() - d.ts < 3000){ el.textContent = `ON AIR: ${d.label}`; el.classList.add('live'); return; }
+    }
+  }catch(e){}
+  el.textContent = 'Frequency clear.';
+  el.classList.remove('live');
+}
+
+function tickClock(){ document.getElementById('clock').textContent = new Date().toISOString().slice(11,19) + 'Z'; }
+setInterval(tickClock, 1000); tickClock();
+setInterval(refreshQueue, 4000);
+setInterval(refreshOnAir, 1200);
+
+loadLocal().then(()=> { signOnFrequency(state.activeFreq, state.activeLabel); refreshMicList(); refreshSpeakerList(); if(state.speakerDeviceId) window.ccVoice.setSpeaker(state.speakerDeviceId); if(state.globalPttEnabled){ document.getElementById('bridgeToggleBtn').textContent = 'DISABLE GLOBAL PTT'; document.getElementById('bridgeToggleBtn').classList.add('on'); connectBridge(); } });
+window.addEventListener('beforeunload', ()=>{ signOffFrequency(state.activeFreq); });
+refreshOnAir();
+</script>
+</body>
+</html>
